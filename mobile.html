@@ -492,9 +492,10 @@
             scene.add(pillar);
         });
 
-        const glassMat = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff, transmission: 0.8, opacity: 0.3, transparent: true,
-            roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide
+        // 【修正點1】降級玻璃材質為手機支援度100%的 Standard 透明材質，避免折射特效出錯變成實體白塊
+        const glassMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, opacity: 0.25, transparent: true,
+            roughness: 0.1, metalness: 0.3, side: THREE.DoubleSide
         });
         const glassGeoX = new THREE.PlaneGeometry(10.4, 10.5);
         const glassGeoZ = new THREE.PlaneGeometry(10.4, 10.5);
@@ -625,40 +626,42 @@
     }
 
     function createBall(name) {
+        // 【修正點2】將貼圖從 512x512 降低為 256x256，大幅降低記憶體負擔
         const canvas = document.createElement('canvas');
-        canvas.width = 512; canvas.height = 512;
+        canvas.width = 256; canvas.height = 256;
         const ctx = canvas.getContext('2d');
         
         const hue = Math.random() * 360;
-        const grad = ctx.createLinearGradient(0, 0, 0, 512);
+        const grad = ctx.createLinearGradient(0, 0, 0, 256);
         grad.addColorStop(0, `hsl(${hue}, 80%, 90%)`);
         grad.addColorStop(0.5, `hsl(${hue}, 80%, 75%)`);
         grad.addColorStop(0.51, `hsl(${hue}, 70%, 50%)`);
         grad.addColorStop(1, `hsl(${hue}, 70%, 40%)`);
         
         ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillRect(0, 0, 256, 256);
         ctx.fillStyle = "rgba(255,255,255,0.6)";
-        ctx.fillRect(0, 240, 512, 32);
+        ctx.fillRect(0, 120, 256, 16);
 
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 65px Microsoft JhengHei";
+        ctx.font = "bold 32px Microsoft JhengHei";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 3;
-        ctx.shadowOffsetY = 3;
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
         
         let displayName = name.length > 5 ? name.substring(0,4)+"..." : name;
-        ctx.fillText(displayName, 256, 170); 
-        ctx.fillText(displayName, 256, 340); 
+        ctx.fillText(displayName, 128, 85); 
+        ctx.fillText(displayName, 128, 170); 
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         
         const radius = 0.6; 
-        const geometry = new THREE.SphereGeometry(radius, 32, 32);
+        // 降低球體切面數以增進手機效能
+        const geometry = new THREE.SphereGeometry(radius, 24, 24);
         const material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.1, metalness: 0.1, envMapIntensity: 1.0 });
         
         const mesh = new THREE.Mesh(geometry, material);
@@ -884,12 +887,13 @@
         const h = container.clientHeight;
         camera.aspect = w / h;
         
-        // 針對手機直向螢幕 (寬 < 高) 調整攝影機位置，拉遠確保機台完整顯示
         if (w < h) {
             camera.position.set(0, 18, 22);
         } else {
             camera.position.set(0, 14, 16);
         }
+        // 【修正點3】加入相機旋轉的強制校正，確保變更位置後還是完美看向機台中心點
+        camera.lookAt(0, 3, 0);
         
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
